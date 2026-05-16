@@ -45,8 +45,23 @@ jobs:
       - name: Prepare update manifest
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          BUNDLE="src-tauri/target/release/bundle"
-          SIG=$(cat "${BUNDLE}/macos/Tributary.app.tar.gz.sig")
+          BUNDLE="src-tauri/target/release/bundle/macos"
+
+          # Locate the signature file produced by the signed build
+          SIG_FILE=$(find "$BUNDLE" -name "*.sig" | head -1)
+          if [ -z "$SIG_FILE" ]; then
+            echo "::error::No .sig file found under $BUNDLE"
+            echo "Make sure TAURI_SIGNING_PRIVATE_KEY is set in repository secrets."
+            exit 1
+          fi
+
+          # Locate the tarball (name includes the version)
+          TAR_FILE=$(find "$BUNDLE" -name "*.app.tar.gz" | head -1)
+          TAR_NAME=$(basename "$TAR_FILE")
+
+          SIG=$(cat "$SIG_FILE")
+          DOWNLOAD_BASE="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+
           cat > latest.json <<EOF
           {
             "version": "${VERSION}",
@@ -54,16 +69,19 @@ jobs:
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
-                "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Tributary_${VERSION}_aarch64.app.tar.gz",
+                "url": "${DOWNLOAD_BASE}/${TAR_NAME}",
                 "signature": "${SIG}"
               },
               "darwin-x86_64": {
-                "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Tributary_${VERSION}_x64.app.tar.gz",
+                "url": "${DOWNLOAD_BASE}/${TAR_NAME}",
                 "signature": "${SIG}"
               }
             }
           }
           EOF
+
+          echo "Manifest written:"
+          cat latest.json
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -74,6 +92,6 @@ jobs:
           generate_release_notes: true
           files: |
             src-tauri/target/release/bundle/dmg/Tributary_*.dmg
-            src-tauri/target/release/bundle/macos/Tributary.app.tar.gz
-            src-tauri/target/release/bundle/macos/Tributary.app.tar.gz.sig
+            src-tauri/target/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
             latest.json
