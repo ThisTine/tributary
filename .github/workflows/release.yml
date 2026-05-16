@@ -48,9 +48,12 @@ jobs:
           # Create the tarball Tauri's updater expects
           tar -czf "${BUNDLE}/Tributary.app.tar.gz" -C "${BUNDLE}" Tributary.app
 
+          # Strip whitespace from the key (secrets can carry a trailing space/newline)
+          CLEAN_KEY=$(printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | tr -d '[:space:]')
+
           # Sign it with the Tauri signer
           pnpm tauri signer sign \
-            -k "$TAURI_SIGNING_PRIVATE_KEY" \
+            -k "$CLEAN_KEY" \
             -p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
             "${BUNDLE}/Tributary.app.tar.gz"
 
