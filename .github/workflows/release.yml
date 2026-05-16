@@ -38,12 +38,24 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build
 
-      - name: List bundle output
+      - name: Create and sign updater bundle
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          echo "=== macos bundle ==="
-          find src-tauri/target/release/bundle/macos -type f | sort
-          echo "=== dmg bundle ==="
-          find src-tauri/target/release/bundle/dmg -type f | sort
+          BUNDLE="src-tauri/target/release/bundle/macos"
+
+          # Create the tarball Tauri's updater expects
+          tar -czf "${BUNDLE}/Tributary.app.tar.gz" -C "${BUNDLE}" Tributary.app
+
+          # Sign it with the Tauri signer
+          pnpm tauri signer sign \
+            -k "$TAURI_SIGNING_PRIVATE_KEY" \
+            -p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
+            "${BUNDLE}/Tributary.app.tar.gz"
+
+          echo "=== signed files ==="
+          ls -lh "${BUNDLE}"/*.tar.gz "${BUNDLE}"/*.sig
 
       - name: Extract version from tag
         id: version
@@ -53,20 +65,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           BUNDLE="src-tauri/target/release/bundle/macos"
-
-          # Locate the signature file produced by the signed build
-          SIG_FILE=$(find "$BUNDLE" -name "*.sig" | head -1)
-          if [ -z "$SIG_FILE" ]; then
-            echo "::error::No .sig file found under $BUNDLE"
-            echo "Make sure TAURI_SIGNING_PRIVATE_KEY is set in repository secrets."
-            exit 1
-          fi
-
-          # Locate the tarball (name includes the version)
-          TAR_FILE=$(find "$BUNDLE" -name "*.app.tar.gz" | head -1)
-          TAR_NAME=$(basename "$TAR_FILE")
-
-          SIG=$(cat "$SIG_FILE")
+          SIG=$(cat "${BUNDLE}/Tributary.app.tar.gz.sig")
           DOWNLOAD_BASE="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
 
           cat > latest.json <<EOF
@@ -76,11 +75,11 @@ jobs:
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
-                "url": "${DOWNLOAD_BASE}/${TAR_NAME}",
+                "url": "${DOWNLOAD_BASE}/Tributary.app.tar.gz",
                 "signature": "${SIG}"
               },
               "darwin-x86_64": {
-                "url": "${DOWNLOAD_BASE}/${TAR_NAME}",
+                "url": "${DOWNLOAD_BASE}/Tributary.app.tar.gz",
                 "signature": "${SIG}"
               }
             }
@@ -99,6 +98,6 @@ jobs:
           generate_release_notes: true
           files: |
             src-tauri/target/release/bundle/dmg/Tributary_*.dmg
-            src-tauri/target/release/bundle/macos/*.app.tar.gz
-            src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+            src-tauri/target/release/bundle/macos/Tributary.app.tar.gz
+            src-tauri/target/release/bundle/macos/Tributary.app.tar.gz.sig
             latest.json
