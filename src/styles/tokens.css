@@ -1,0 +1,88 @@
+:root {
+  color-scheme: light dark;
+
+  /* Typography */
+  --font-sans:   -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-serif:  "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-mono:   "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Text scale */
+  --text-xs:   10px;
+  --text-sm:   11px;
+  --text-base: 12.5px;
+  --text-md:   13px;
+  --text-lg:   14px;
+  --text-xl:   16px;
+  --text-2xl:  19px;
+
+  /* ── Light mode ── */
+  --fg-primary:   #111118;
+  --fg-secondary: rgba(17,17,24,0.58);
+  --fg-tertiary:  rgba(17,17,24,0.36);
+  --fg-muted:     rgba(17,17,24,0.22);
+  --fg-icon:      rgba(17,17,24,0.42);
+
+  --bg-sidebar:       rgba(0,0,0,0.03);
+  --bg-topbar:        rgba(255,255,255,0.10);
+  --bg-card:          rgba(255,255,255,0.55);
+  --bg-card-hover:    rgba(255,255,255,0.72);
+  --bg-card-selected: rgba(255,255,255,0.85);
+  --bg-panel:         rgba(244,242,250,0.88);
+  --bg-modal:         rgba(248,246,254,0.94);
+  --bg-subtle:        rgba(0,0,0,0.045);
+  --bg-input:         rgba(255,255,255,0.68);
+  --bg-user-pill:     rgba(255,255,255,0.40);
+
+  --border-subtle:  rgba(0,0,0,0.07);
+  --border-card:    rgba(255,255,255,0.72);
+  --border-input:   rgba(0,0,0,0.10);
+  --border-divider: rgba(0,0,0,0.055);
+
+  /* Pipeline status */
+  --pipeline-success-fg: #0f9d5a;
+  --pipeline-success-bg: rgba(15,157,90,0.12);
+  --pipeline-failed-fg:  #d93251;
+  --pipeline-failed-bg:  rgba(217,50,81,0.12);
+  --pipeline-running-fg: #1a6fd8;
+  --pipeline-running-bg: rgba(26,111,216,0.12);
+  --pipeline-manual-fg:  #7c5cbf;
+  --pipeline-manual-bg:  rgba(124,92,191,0.12);
+  --pipeline-cancel-fg:  #6b7585;
+  --pipeline-cancel-bg:  rgba(107,117,133,0.12);
+
+  /* Border radii */
+  --radius-sm:     4px;
+  --radius-md:     6px;
+  --radius-lg:     8px;
+  --radius-xl:     10px;
+  --radius-2xl:    12px;
+  --radius-3xl:    14px;
+  --radius-pill:   999px;
+  --radius-window: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg-primary:   rgba(255,252,245,0.94);
+    --fg-secondary: rgba(255,252,245,0.56);
+    --fg-tertiary:  rgba(255,252,245,0.34);
+    --fg-muted:     rgba(255,252,245,0.20);
+    --fg-icon:      rgba(255,252,245,0.40);
+
+    --bg-sidebar:       rgba(0,0,0,0.14);
+    --bg-topbar:        rgba(0,0,0,0.08);
+    --bg-card:          rgba(255,255,255,0.065);
+    --bg-card-hover:    rgba(255,255,255,0.10);
+    --bg-card-selected: rgba(255,255,255,0.14);
+    --bg-panel:         rgba(16,14,26,0.90);
+    --bg-modal:         rgba(18,16,30,0.94);
+    --bg-subtle:        rgba(255,255,255,0.07);
+    --bg-input:         rgba(255,255,255,0.09);
+    --bg-user-pill:     rgba(255,255,255,0.065);
+
+    --border-subtle:  rgba(255,255,255,0.09);
+    --border-card:    rgba(255,255,255,0.09);
+    --border-input:   rgba(255,255,255,0.13);
+    --border-divider: rgba(255,255,255,0.07);
+  }
+}

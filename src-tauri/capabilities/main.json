@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Tributary main window permissions",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-set-size",
+    "core:window:allow-start-dragging",
+    "notification:default",
+    "notification:allow-request-permission",
+    "notification:allow-notify",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-load",
+    "shell:allow-open",
+    "window-state:default",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "process:default"
+  ]
+}
