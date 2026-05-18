@@ -131,6 +131,18 @@ The workflow builds a signed `.app`, wraps it in a `.dmg`, generates the `latest
 
 ## Release notes
 
+### v0.1.1 — May 2025
+
+Bug fixes.
+
+**Fixed**
+- Profile avatar and username now restore correctly after relaunch — no more "not logged in" state on startup
+- Read/unread status on the Activity feed now persists across relaunches; marking events read syncs to GitLab Todos so they stay read after reload
+- Label subscription rules now fetch and display MRs correctly; subscribing via the Labels tab in the Subscribe modal saves the rule to disk
+- MR approval count updates correctly when reviewers approve
+
+---
+
 ### v0.1.0 — May 2025
 
 Initial release.
