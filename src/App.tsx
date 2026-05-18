@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
 import { useUIStore } from "./store";
 import type { MergeRequest, Event, Settings, User } from "./types";
-import { api } from "./ipc";
+import { api, onAuthReady } from "./ipc";
 import { SetupWizard } from "./components/SetupWizard";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
@@ -97,6 +97,12 @@ export default function App() {
     setSettings(completedSettings);
     fetchData();
   }
+
+  // Restore user from keychain on startup (auth-ready fires after token validation)
+  useEffect(() => {
+    const unlisten = onAuthReady((user) => setCurrentUser(user));
+    return () => { unlisten.then((f) => f()); };
+  }, []);
 
   // Tray "Quick Add MR" → open subscribe modal
   useEffect(() => {

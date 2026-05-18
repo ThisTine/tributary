@@ -8,7 +8,7 @@ pub mod model;
 pub mod state;
 mod tray;
 
-use commands::{auth, events, mrs, settings};
+use commands::{auth, events, mrs, rules, settings};
 use state::AppState;
 
 pub fn run() {
@@ -17,7 +17,8 @@ pub fn run() {
     // Load persisted settings before constructing AppState so the correct
     // instance URL is available when we attempt keychain lookup at startup.
     let saved_settings = settings::load_from_disk();
-    let app_state = AppState::new(saved_settings);
+    let saved_rules = rules::load_from_disk();
+    let app_state = AppState::new(saved_settings, saved_rules);
 
     tauri::Builder::default()
         .manage(app_state)
@@ -43,8 +44,9 @@ pub fn run() {
 
             let state: tauri::State<AppState> = app.state();
             let state_clone = state.inner().clone();
+            let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                auth::load_token_from_keychain(&state_clone).await;
+                auth::load_token_from_keychain(&app_handle, &state_clone).await;
             });
 
             Ok(())
@@ -64,6 +66,10 @@ pub fn run() {
             mrs::get_view_counts,
             events::list_events,
             events::mark_events_read,
+            auth::get_current_user,
+            rules::list_rules,
+            rules::save_rule,
+            rules::delete_rule,
         ])
         .build(tauri::generate_context!())
         .expect("error building Tauri application")

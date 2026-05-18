@@ -44,6 +44,50 @@ pub async fn list_mrs(
         }
     }
 
+    // Fetch MRs for label subscription rules
+    let label_rules: Vec<crate::model::Rule> = state.rules.read().await
+        .iter()
+        .filter(|r| r.enabled && r.kind == "label")
+        .cloned()
+        .collect();
+
+    for rule in label_rules {
+        let project = match rule.payload.get("project_path").and_then(|v| v.as_str()) {
+            Some(p) => p.to_string(),
+            None => continue,
+        };
+        let labels: Vec<String> = rule.payload
+            .get("labels").and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default();
+        if labels.is_empty() { continue; }
+
+        let match_mode = rule.payload.get("match_mode").and_then(|v| v.as_str()).unwrap_or("any");
+        let min_count = rule.payload.get("min_count").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+
+        let mut label_mrs = match gl.list_mrs_by_label(&project, &labels).await {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        // Apply client-side label match filter
+        label_mrs.retain(|mr| {
+            let mr_label_set: std::collections::HashSet<&str> =
+                mr.labels.iter().map(|l| l.as_str()).collect();
+            match match_mode {
+                "all" => labels.iter().all(|l| mr_label_set.contains(l.as_str())),
+                "min" => labels.iter().filter(|l| mr_label_set.contains(l.as_str())).count() >= min_count,
+                _     => labels.iter().any(|l| mr_label_set.contains(l.as_str())),
+            }
+        });
+
+        for gl_mr in label_mrs {
+            if seen.insert(gl_mr.iid) {
+                mrs.push(gitlab::map_mr(gl_mr, TrackingRole::Reviewer));
+            }
+        }
+    }
+
     // Apply optional search
     if let Some(q) = search.as_deref().filter(|s| !s.trim().is_empty()) {
         let q = q.to_lowercase();

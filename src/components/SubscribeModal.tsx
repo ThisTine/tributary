@@ -61,9 +61,45 @@ export const SubscribeModal: React.FC<Props> = ({ onClose, onSubscribe, accent }
       } finally {
         setLoading(false);
       }
+    } else if (tab === "labels") {
+      if (!project) { setError("Select a project."); return; }
+      if (labels.length === 0) { setError("Add at least one label."); return; }
+      setLoading(true);
+      try {
+        await api.saveRule({
+          kind: "label",
+          enabled: true,
+          payload: {
+            project_path: project.path_with_namespace,
+            labels,
+            match_mode: labelMatchMode,
+            min_count: labelMatchMode === "min" ? labelMinCount : undefined,
+          },
+        });
+        onClose();
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
     } else {
-      // rules/labels not yet backed by API — just close for now
-      onClose();
+      // "rules" tab: save role-based rule
+      if (!project) { setError("Select a project."); return; }
+      const selectedRoles = Object.entries(roles).filter(([, v]) => v).map(([k]) => k);
+      if (selectedRoles.length === 0) { setError("Select at least one role."); return; }
+      setLoading(true);
+      try {
+        await api.saveRule({
+          kind: "role",
+          enabled: true,
+          payload: { project_path: project.path_with_namespace, roles: selectedRoles },
+        });
+        onClose();
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

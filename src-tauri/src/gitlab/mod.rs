@@ -73,6 +73,45 @@ impl GitLabClient {
         self.get(&url).await
     }
 
+    pub async fn mark_todo_done(&self, todo_id: i64) -> Result<(), AppError> {
+        let url = self.url(&format!("/todos/{}/mark_as_done", todo_id));
+        let resp = self.client.post(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .send().await?;
+        if !resp.status().is_success() {
+            return Err(AppError::Gitlab(format!("HTTP {}", resp.status())));
+        }
+        Ok(())
+    }
+
+    pub async fn mark_all_todos_done(&self) -> Result<(), AppError> {
+        let url = self.url("/todos/mark_as_done");
+        let resp = self.client.post(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .send().await?;
+        if !resp.status().is_success() {
+            return Err(AppError::Gitlab(format!("HTTP {}", resp.status())));
+        }
+        Ok(())
+    }
+
+    pub async fn list_mrs_by_label(
+        &self,
+        project_path: &str,
+        labels: &[String],
+    ) -> Result<Vec<GlMr>, AppError> {
+        let encoded = project_path.replace('/', "%2F");
+        let mut url = reqwest::Url::parse(&self.url(&format!("/projects/{}/merge_requests", encoded)))
+            .map_err(|e| AppError::Other(e.to_string()))?;
+        {
+            let mut q = url.query_pairs_mut();
+            q.append_pair("state", "opened");
+            q.append_pair("per_page", "100");
+            q.append_pair("labels", &labels.join(","));
+        }
+        self.get(url.as_str()).await
+    }
+
     pub async fn search_projects(&self, query: &str) -> Result<Vec<GlProject>, AppError> {
         let mut url = reqwest::Url::parse(&self.url("/projects"))
             .map_err(|e| AppError::Other(e.to_string()))?;
@@ -97,6 +136,11 @@ pub struct GlUser {
     pub username: String,
     pub name: String,
     pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GlApprovedBy {
+    pub user: GlUser,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,6 +176,7 @@ pub struct GlMr {
     pub diff_refs: Option<serde_json::Value>,
     pub user_notes_count: Option<i64>,
     pub blocking_discussions_resolved: Option<bool>,
+    pub approved_by: Option<Vec<GlApprovedBy>>,
 }
 
 #[derive(Debug, Deserialize, serde::Serialize)]
@@ -211,7 +256,7 @@ pub fn map_mr(gl: GlMr, role: model::TrackingRole) -> model::MergeRequest {
         conflicts: gl.has_conflicts.unwrap_or(false),
         pipeline: pipeline_str,
         pipeline_detail,
-        approvals: 0,
+        approvals: gl.approved_by.as_ref().map(|v| v.len() as u32).unwrap_or(0),
         approvals_required: 1,
         unresolved_threads: if gl.blocking_discussions_resolved == Some(false) {
             gl.user_notes_count.unwrap_or(1)

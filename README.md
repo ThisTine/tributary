@@ -54,7 +54,10 @@ Tributary checks for updates on launch and installs them in the background. Upda
 
 1. Download `Tributary_x.x.x_aarch64.dmg` from the [latest release](../../releases/latest)
 2. Open the DMG and drag **Tributary.app** to `/Applications`
-3. Right-click → Open on first launch (macOS Gatekeeper bypass for unsigned local install)
+3. On first launch macOS may show **"Tributary is damaged and can't be opened"** — this is Gatekeeper rejecting an unsigned app. Run the following command to clear the quarantine flag, then open normally:
+   ```bash
+   xattr -cr /Applications/Tributary.app
+   ```
 4. Complete the two-step setup wizard — enter your GitLab instance URL and a personal access token
 
 > **Self-hosted GitLab?** Enter your instance URL (e.g. `https://gitlab.yourcompany.com`) in the setup wizard or Settings → Connection.

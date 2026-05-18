@@ -88,8 +88,8 @@ export interface SubscriptionRule {
 }
 
 export interface LinkPayload { url: string }
-export interface RolePayload { roles: string[]; project?: string }
-export interface LabelPayload { project_path: string; labels: string[] }
+export interface RolePayload { roles: string[]; project_path?: string }
+export interface LabelPayload { project_path: string; labels: string[]; match_mode?: "all" | "any" | "min"; min_count?: number }
 
 export interface Subscriptions {
   rules: SubscriptionRule[];

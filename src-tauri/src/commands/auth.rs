@@ -1,5 +1,10 @@
-use tauri::State;
-use crate::{commands::settings, error::AppError, model::AuthResult, state::AppState};
+use tauri::{AppHandle, Emitter, State};
+use crate::{commands::settings, error::AppError, model::{AuthResult, User}, state::AppState};
+
+#[tauri::command]
+pub async fn get_current_user(state: State<'_, AppState>) -> Result<Option<User>, AppError> {
+    Ok(state.current_user.read().await.clone())
+}
 
 const KEYCHAIN_SERVICE: &str = "tributary";
 const KEYCHAIN_ACCOUNT: &str = "token";
@@ -48,8 +53,8 @@ pub async fn set_token(
 }
 
 /// Called at startup — loads the stored token, re-validates it against GitLab,
-/// and restores the authenticated user into AppState.
-pub async fn load_token_from_keychain(state: &AppState) -> bool {
+/// restores the authenticated user into AppState, and emits "auth-ready".
+pub async fn load_token_from_keychain(app: &AppHandle, state: &AppState) -> bool {
     let instance = state.settings.read().await.instance.clone();
     let account  = format!("{instance}:{KEYCHAIN_ACCOUNT}");
 
@@ -59,8 +64,9 @@ pub async fn load_token_from_keychain(state: &AppState) -> bool {
     match fetch_user(&instance, &token).await {
         Some(user) => {
             *state.token.write().await = Some(token);
-            *state.current_user.write().await = Some(user);
+            *state.current_user.write().await = Some(user.clone());
             state.settings.write().await.token_present = true;
+            let _ = app.emit("auth-ready", user);
             true
         }
         None => false,

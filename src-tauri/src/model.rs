@@ -211,6 +211,16 @@ impl Default for Settings {
     }
 }
 
+// ── Subscription rules ────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Rule {
+    pub id: String,
+    pub kind: String, // "link" | "role" | "label"
+    pub payload: serde_json::Value,
+    pub enabled: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthResult {
     pub ok: bool,

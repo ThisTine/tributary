@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   MergeRequest, Event, Settings, SubscriptionRule,
-  ViewId, FilterId, ActivityFilter, AuthResult, PollerStatus,
+  ViewId, FilterId, ActivityFilter, AuthResult, PollerStatus, User,
 } from "./types";
 
 // ── Commands ─────────────────────────────────────────────────────────────────
@@ -47,6 +47,9 @@ export const api = {
   setSettings: (patch: Partial<Settings>) =>
     invoke<Settings>("set_settings", { patch }),
 
+  getCurrentUser: () =>
+    invoke<User | null>("get_current_user"),
+
   setToken: (token: string) =>
     invoke<AuthResult>("set_token", { token }),
 
@@ -72,6 +75,10 @@ export function onPollerStatus(cb: (status: PollerStatus) => void): Promise<Unli
 
 export function onAuthInvalid(cb: () => void): Promise<UnlistenFn> {
   return listen("auth://invalid", () => cb());
+}
+
+export function onAuthReady(cb: (user: User) => void): Promise<UnlistenFn> {
+  return listen<User>("auth-ready", (e) => cb(e.payload));
 }
 
 export function onDeepLink(cb: (project: string, iid: number) => void): Promise<UnlistenFn> {
