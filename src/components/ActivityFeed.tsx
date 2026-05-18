@@ -183,7 +183,7 @@ const BUCKETS: { id: string; label: string }[] = [
 ];
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = ({ events, mrs, filter, onFilter, onMarkAllRead, onOpen, accent }) => {
-  let visible = events;
+  let visible = [...events].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   if (filter === "unread")    visible = visible.filter((e) => e.unread);
   if (filter === "mentions")  visible = visible.filter((e) => e.kind === "mentioned");
   if (filter === "pipelines") visible = visible.filter((e) => e.kind === "pipeline_failed" || e.kind === "pipeline_passed");

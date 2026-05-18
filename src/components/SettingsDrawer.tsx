@@ -273,7 +273,7 @@ export const SettingsDrawer: React.FC<Props> = ({ onClose, onSetup, settings, on
             fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-muted)",
             letterSpacing: "0.04em", paddingTop: 4,
           }}>
-            <span>Tributary v0.1.0</span>
+            <span>Tributary v0.1.2</span>
             <span>Tokens never leave your machine.</span>
           </div>
         </div>

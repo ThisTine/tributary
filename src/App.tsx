@@ -59,6 +59,7 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(UNSET_SETTINGS);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
+  const [authed, setAuthed] = useState(false);
 
   const accent = theme.accent;
 
@@ -76,31 +77,55 @@ export default function App() {
     }
   }, []);
 
+  // On startup: load settings then wait for keychain auth to be ready before fetching.
+  // We can't call fetchData() immediately because load_token_from_keychain runs
+  // async in Rust — if the token isn't in AppState yet, list_mrs returns [].
   useEffect(() => {
-    api.getSettings().then((s) => {
-      if (!s) return;
+    let cancelled = false;
+    api.getSettings().then(async (s) => {
+      if (!s || cancelled) return;
       setSettings(s);
-      if (s.token_present) fetchData();
-      // Background update check — runs once on launch if auto_update enabled
+      if (s.token_present) {
+        // Poll until the Rust keychain task has loaded the token into AppState
+        const deadline = Date.now() + 6000;
+        while (!cancelled && Date.now() < deadline) {
+          const user = await api.getCurrentUser();
+          if (user) { setCurrentUser(user); setAuthed(true); break; }
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
       if (s.workspace.auto_update) {
         check().then((update) => {
-          if (update?.available) {
-            showToast(`Update available: v${update.version}`);
-          }
-        }).catch(() => { /* ignore network errors on startup */ });
+          if (update?.available) showToast(`Update available: v${update.version}`);
+        }).catch(() => {});
       }
     });
+    return () => { cancelled = true; };
   }, []);
+
+  // Initial data fetch once auth is confirmed
+  useEffect(() => {
+    if (authed) fetchData();
+  }, [authed]);
+
+  // Periodic polling — restarts whenever poll_interval_minutes changes
+  useEffect(() => {
+    if (!authed) return;
+    const ms = settings.poll_interval_minutes * 60 * 1000;
+    const id = setInterval(fetchData, ms);
+    return () => clearInterval(id);
+  }, [authed, settings.poll_interval_minutes, fetchData]);
 
   function handleSetupComplete(user: User | null | undefined, completedSettings: Settings) {
     setCurrentUser(user ?? null);
     setSettings(completedSettings);
-    fetchData();
+    setAuthed(true);
   }
 
-  // Restore user from keychain on startup (auth-ready fires after token validation)
+  // auth-ready covers re-authentication mid-session and any race where the
+  // polling loop above times out
   useEffect(() => {
-    const unlisten = onAuthReady((user) => setCurrentUser(user));
+    const unlisten = onAuthReady((user) => { setCurrentUser(user); setAuthed(true); });
     return () => { unlisten.then((f) => f()); };
   }, []);
 
@@ -109,6 +134,12 @@ export default function App() {
     const unlisten = listen("open-subscribe", () => openSubscribe());
     return () => { unlisten.then((f) => f()); };
   }, []);
+
+  // Tray "Poll Now" → immediate refresh
+  useEffect(() => {
+    const unlisten = listen("poll-now", () => fetchData());
+    return () => { unlisten.then((f) => f()); };
+  }, [fetchData]);
 
   // ⌘K focus / Esc dismiss
   useEffect(() => {
@@ -206,7 +237,10 @@ export default function App() {
         {view === "activity" ? (
           <ActivityFeed events={events} mrs={mrs}
             filter={activityFilter} onFilter={setActivityFilter}
-            onMarkAllRead={() => setEvents((prev) => prev.map((e) => ({ ...e, unread: false })))}
+            onMarkAllRead={() => {
+              setEvents((prev) => prev.map((e) => ({ ...e, unread: false })));
+              api.markEventsRead();
+            }}
             onOpen={(iid) => selectMr(iid)} accent={accent} />
         ) : (
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 9 }}>
@@ -231,7 +265,7 @@ export default function App() {
       </div>
 
       {showSubscribe && <SubscribeModal accent={accent} onClose={closeSubscribe} onSubscribe={handleSubscribe} />}
-      {showSettings  && <SettingsDrawer accent={accent} settings={settings} onChange={(p) => setSettings({ ...settings, ...p })} onClose={closeSettings}
+      {showSettings  && <SettingsDrawer accent={accent} settings={settings} onChange={(p) => { setSettings({ ...settings, ...p }); api.setSettings(p); }} onClose={closeSettings}
         onSetup={() => { closeSettings(); setSettings((s) => ({ ...s, token_present: false })); }} />}
       {toast && <Toast msg={toast.msg} accent={toast.accent} />}
     </div>

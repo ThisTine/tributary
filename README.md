@@ -131,6 +131,22 @@ The workflow builds a signed `.app`, wraps it in a `.dmg`, generates the `latest
 
 ## Release notes
 
+### v0.1.2 — May 2025
+
+Bug fixes.
+
+**Fixed**
+- Profile no longer shows "Not signed in" after relaunch — startup now waits for keychain validation before rendering the authenticated state
+- MR list no longer flashes empty on reload — data fetch is deferred until the token is confirmed live in app state
+- Polling now actually runs — a real interval is started after auth, based on the configured poll interval
+- "Poll Now" in the menu bar tray now triggers an immediate refresh
+- Marking events as read in the activity page now persists to GitLab — read state survives reloads
+- Marking events as read from the tray (both "Mark All Read" and clicking individual events) now persists to GitLab
+- Settings changes (poll interval, notifications, workspace toggles) now save to disk immediately — no longer reset to defaults on relaunch
+- Activity feed now shows newest events at the top within each time bucket
+
+---
+
 ### v0.1.1 — May 2025
 
 Bug fixes.

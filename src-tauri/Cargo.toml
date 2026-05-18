@@ -1,6 +1,6 @@
 [package]
 name = "tributary"
-version = "0.1.0"
+version = "0.1.2"
 description = "Tributary — MR notification center"
 authors = []
 edition = "2021"

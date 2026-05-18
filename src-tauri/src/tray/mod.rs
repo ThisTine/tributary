@@ -49,26 +49,39 @@ fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
 
         "mark_read" => {
             tauri::async_runtime::spawn(async move {
+                let (token, instance) = {
+                    let state: tauri::State<AppState> = app.state();
+                    let token = state.token.read().await.clone();
+                    let instance = state.settings.read().await.instance.clone();
+                    (token, instance)
+                };
                 {
                     let state: tauri::State<AppState> = app.state();
                     let mut cache = state.events_cache.write().await;
                     for e in cache.iter_mut() { e.unread = false; }
                 }
+                if let Some(token) = token {
+                    let gl = crate::gitlab::GitLabClient::new(&instance, &token);
+                    let _ = gl.mark_all_todos_done().await;
+                }
                 refresh_tray(&app);
             });
         }
 
-        "poll" => log::info!("manual poll from tray"),
+        "poll" => { let _ = app.emit("poll-now", ()); }
 
         "quit" => app.exit(0),
 
         id if id.starts_with("ev_") => {
             let ev_id = id.strip_prefix("ev_").unwrap_or("").to_string();
             tauri::async_runtime::spawn(async move {
-                let url = {
+                let (url, token, instance) = {
                     let state: tauri::State<AppState> = app.state();
-                    let cache = state.events_cache.read().await;
-                    cache.iter().find(|e| e.id == ev_id).map(|e| e.web_url.clone())
+                    let token = state.token.read().await.clone();
+                    let instance = state.settings.read().await.instance.clone();
+                    let url = state.events_cache.read().await.iter()
+                        .find(|e| e.id == ev_id).map(|e| e.web_url.clone());
+                    (url, token, instance)
                 };
                 if let Some(url) = url {
                     if !url.is_empty() {
@@ -76,13 +89,23 @@ fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
                     } else {
                         show_window(&app);
                     }
-                    // mark as read
-                    let state: tauri::State<AppState> = app.state();
-                    let mut cache = state.events_cache.write().await;
-                    if let Some(ev) = cache.iter_mut().find(|e| e.id == ev_id) {
-                        ev.unread = false;
+                    // Mark read in local cache
+                    {
+                        let state: tauri::State<AppState> = app.state();
+                        let mut cache = state.events_cache.write().await;
+                        if let Some(ev) = cache.iter_mut().find(|e| e.id == ev_id) {
+                            ev.unread = false;
+                        }
                     }
-                    drop(cache);
+                    // Persist to GitLab
+                    if let Some(token) = token {
+                        if let Some(id_str) = ev_id.strip_prefix("todo-") {
+                            if let Ok(todo_id) = id_str.parse::<i64>() {
+                                let gl = crate::gitlab::GitLabClient::new(&instance, &token);
+                                let _ = gl.mark_todo_done(todo_id).await;
+                            }
+                        }
+                    }
                     refresh_tray(&app);
                 }
             });
